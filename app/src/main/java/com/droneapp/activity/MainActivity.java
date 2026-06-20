@@ -93,6 +93,37 @@ public class MainActivity extends AppCompatActivity {
             .show();
     }
 
+
+
+    private void safeArmDrone() {
+    PlayIntegrityChecker.verifyIntegrity(this, new PlayIntegrityChecker.IntegrityCallback() {
+        
+        @Override
+        public void onTokenReceived(String token, String nonce) {
+            // Send token to YOUR server
+            // Server verifies with Google and returns: safe or not safe
+            // 
+            // Example server call:
+            // POST https://your-server.com/api/verify-integrity
+            // Body: { "token": "...", "nonce": "..." }
+            //
+            // Server response: { "verified": true, "deviceIntegrity": "MEETS_DEVICE_INTEGRITY" }
+            //
+            // If verified → proceed with arming
+            String userToken = userPrefs.getAuthToken();
+            apiService.sendDroneCommand(userToken, "ARM", 28.6139, 77.2090, 100.0);
+        }
+        @Override
+        public void onCheckFailed(String error) {
+            Toast.makeText(MainActivity.this, 
+                "Security verification failed. Cannot arm drone.", 
+                Toast.LENGTH_LONG).show();
+        }
+    });
+}
+
+
+
     /**
      * Simulate sending a drone command
      */
