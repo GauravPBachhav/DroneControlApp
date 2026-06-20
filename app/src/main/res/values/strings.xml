@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Drone Control</string>
+
+    <!-- ❌ DANGER: Secrets in strings.xml — fully readable after decompiling! -->
+    <string name="google_maps_key">AIzaSyB-FAKE-KEY-xYz123AbCdEfGhIjKlMnOp</string>
+    <string name="firebase_api_key">AIzaSyC-FIREBASE-KEY-1234567890abcdef</string>
+    <string name="server_base_url">https://api.dronecontrol.com/v2</string>
+    <string name="mqtt_broker_url">tcp://mqtt.dronecontrol.com:1883</string>
+    <string name="mqtt_username">drone_mqtt_user</string>
+    <string name="mqtt_password">Mqtt@Secret#2026</string>
+</resources>

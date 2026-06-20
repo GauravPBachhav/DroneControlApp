@@ -1,0 +1,18 @@
+# ❌ PROBLEM: This .gitignore is INCOMPLETE — secrets will get uploaded to GitHub!
+
+# Default ignores
+*.iml
+.gradle
+/local.properties
+/.idea
+/build
+/captures
+.externalNativeBuild
+.cxx
+
+# ❌ MISSING: Not ignoring sensitive files!
+# Should ignore:  google-services.json
+# Should ignore:  *.jks (keystore files)
+# Should ignore:  *.keystore
+# Should ignore:  keystore.properties
+# Should ignore:  signing configs
