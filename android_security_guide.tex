@@ -1,0 +1,555 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[margin=2cm]{geometry}
+\usepackage{xcolor}
+\usepackage{enumitem}
+\usepackage{tabularx}
+\usepackage{booktabs}
+\usepackage{fancyhdr}
+\usepackage{hyperref}
+\usepackage{tcolorbox}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{fontawesome5}
+\usepackage{listings}
+\tcbuselibrary{skins,breakable}
+
+% ── Colors ──
+\definecolor{primary}{HTML}{1A237E}
+\definecolor{accent}{HTML}{4361EE}
+\definecolor{success}{HTML}{2E7D32}
+\definecolor{danger}{HTML}{C62828}
+\definecolor{warning}{HTML}{E65100}
+\definecolor{codebg}{HTML}{F5F5F5}
+\definecolor{darkbg}{HTML}{263238}
+
+\hypersetup{colorlinks=true,linkcolor=accent,urlcolor=accent}
+
+% ── Code Listing ──
+\lstset{
+  backgroundcolor=\color{codebg},
+  basicstyle=\ttfamily\small,
+  breaklines=true,
+  frame=single,
+  rulecolor=\color{accent!30},
+  keywordstyle=\color{primary}\bfseries,
+  commentstyle=\color{success!70},
+  stringstyle=\color{danger},
+  showstringspaces=false
+}
+
+% ── Header/Footer ──
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\small\color{primary}\textbf{Android Security \& Encryption --- Industrial Guide}}
+\fancyhead[R]{\small\color{primary}\faIcon{shield-alt}}
+\fancyfoot[C]{\thepage}
+\renewcommand{\headrulewidth}{1.5pt}
+\renewcommand{\headrule}{\hbox to\headwidth{\color{accent}\leaders\hrule height \headrulewidth\hfill}}
+
+% ── Custom Boxes ──
+\newtcolorbox{problembox}[1][]{
+  enhanced,breakable,colback=danger!6,colframe=danger,
+  fonttitle=\bfseries\large\sffamily,title=#1,
+  left=8pt,right=8pt,top=6pt,bottom=6pt,
+  boxrule=1.5pt,arc=4pt
+}
+\newtcolorbox{solutionbox}[1][]{
+  enhanced,breakable,colback=success!6,colframe=success,
+  fonttitle=\bfseries\sffamily,title=#1,
+  left=6pt,right=6pt,boxrule=1pt,arc=3pt
+}
+\newtcolorbox{diagrambox}[1][]{
+  enhanced,breakable,colback=codebg,colframe=accent,
+  fonttitle=\bfseries\sffamily,title=#1,
+  left=6pt,right=6pt,boxrule=1pt,arc=3pt
+}
+\newtcolorbox{notebox}[1][]{
+  enhanced,breakable,colback=warning!8,colframe=warning,
+  fonttitle=\bfseries\sffamily,title=#1,
+  left=6pt,right=6pt,boxrule=1pt,arc=3pt
+}
+\newtcolorbox{summarybox}[1][]{
+  enhanced,breakable,colback=primary!5,colframe=primary,
+  fonttitle=\bfseries\large\sffamily,title=#1,
+  left=8pt,right=8pt,top=6pt,bottom=6pt,
+  boxrule=1.5pt,arc=4pt
+}
+
+\newcommand{\tech}[1]{\textcolor{accent}{\textbf{#1}}}
+\newcommand{\danger}[1]{\textcolor{danger}{\textbf{#1}}}
+\newcommand{\safe}[1]{\textcolor{success}{\textbf{#1}}}
+\newcommand{\stars}[1]{%
+  \ifnum#1>0 \faIcon{star}\fi
+  \ifnum#1>1 \faIcon{star}\fi
+  \ifnum#1>2 \faIcon{star}\fi
+  \ifnum#1>3 \faIcon{star}\fi
+  \ifnum#1>4 \faIcon{star}\fi
+}
+
+\begin{document}
+
+% ══════════════════════════════════════
+% TITLE PAGE
+% ══════════════════════════════════════
+\begin{center}
+{\Huge\bfseries\sffamily\color{primary} \faIcon{shield-alt}~Android Security \& Encryption}\\[0.4cm]
+{\Large\sffamily\color{accent} Complete Industrial Guide --- Before $|$ During $|$ After Deployment}\\[0.3cm]
+{\normalsize\color{gray} 9 Steps: Problem $\rightarrow$ Solution $\rightarrow$ Code $|$ Drone Control App Case Study $|$ Gaurav Bachhav}
+\end{center}
+\vspace{0.3cm}
+
+\begin{summarybox}[\faIcon{exclamation-triangle}~The Core Problem]
+\textbf{Any Android APK can be decompiled} using free tools like JADX, APKTool, or dex2jar.\\
+If you hardcode API keys, passwords, or credentials in your code --- \danger{anyone can steal them.}\\[6pt]
+\textbf{This guide covers 9 industrial methods} to protect your app, demonstrated on a real drone control application where security is not optional --- it is \textbf{life-critical}.
+\end{summarybox}
+
+\tableofcontents
+\newpage
+
+% ══════════════════════════════════════════════════
+\section{Step 1: Move Secrets to local.properties (BuildConfig Injection)}
+% ══════════════════════════════════════════════════
+
+\begin{problembox}[\faIcon{bug}~Problem: Hardcoded Secrets in Source Code]
+Secrets written directly in Java code get pushed to GitHub \textbf{and} baked into the APK.
+\begin{lstlisting}[language=Java]
+// Anyone on GitHub or decompiling the APK sees this:
+public static final String API_KEY = "sk-drone-4f8a2b1c-9d3e";
+public static final String DB_PASSWORD = "Postgr3s@Pr0d#2026";
+\end{lstlisting}
+\danger{Risk:} Exposed on GitHub + exposed in APK = double vulnerability.
+\end{problembox}
+
+\begin{solutionbox}[\faIcon{check-circle}~Solution: Store in local.properties, inject via Gradle]
+Secrets live in \texttt{local.properties} (never pushed to Git). Gradle reads them at build time and injects into \texttt{BuildConfig}.
+
+\textbf{Step A --- Create \texttt{local.properties}:}
+\begin{lstlisting}
+# This file stays ONLY on your computer
+DRONE_API_KEY=sk-drone-4f8a2b1c-9d3e
+DB_PASSWORD=Postgr3s@Pr0d#2026
+\end{lstlisting}
+
+\textbf{Step B --- Read in \texttt{build.gradle}:}
+\begin{lstlisting}[language=Java]
+def localProps = new Properties()
+localProps.load(new FileInputStream(rootProject.file("local.properties")))
+
+buildConfigField "String", "DRONE_API_KEY",
+    "\"${localProps['DRONE_API_KEY']}\""
+\end{lstlisting}
+
+\textbf{Step C --- Use in Java:}
+\begin{lstlisting}[language=Java]
+// No hardcoded value --- reads from BuildConfig
+String apiKey = BuildConfig.DRONE_API_KEY;
+\end{lstlisting}
+\end{solutionbox}
+
+\begin{notebox}[\faIcon{info-circle}~What This Protects \& What It Doesn't]
+\begin{tabularx}{\textwidth}{lX}
+\toprule
+\safe{Protects from} & Secrets appearing on GitHub \\
+\danger{Does NOT protect from} & APK decompilation (values are still baked into the APK) \\
+\bottomrule
+\end{tabularx}
+\end{notebox}
+
+% ══════════════════════════════════════════════════
+\section{Step 2: R8/ProGuard --- Code Obfuscation}
+% ══════════════════════════════════════════════════
+
+\begin{problembox}[\faIcon{bug}~Problem: Decompiled Code is Perfectly Readable]
+After decompiling, a hacker sees clean class names, method names, and all debug log messages.
+\begin{lstlisting}[language=Java]
+// Hacker sees:
+public class DroneApiService {
+    public void connectToServer() { ... }
+    Log.d(TAG, "Password: " + password);  // secret printed!
+}
+\end{lstlisting}
+\end{problembox}
+
+\begin{solutionbox}[\faIcon{check-circle}~Solution: Enable R8 Obfuscation + Strip Logs]
+\textbf{Step A --- Enable in \texttt{build.gradle}:}
+\begin{lstlisting}[language=Java]
+release {
+    minifyEnabled true      // Scramble names
+    shrinkResources true    // Remove unused code
+}
+\end{lstlisting}
+
+\textbf{Step B --- Strip logs in \texttt{proguard-rules.pro}:}
+\begin{lstlisting}
+-assumenosideeffects class android.util.Log {
+    public static int v(...);
+    public static int d(...);
+    public static int i(...);
+}
+\end{lstlisting}
+
+\textbf{Result --- Hacker now sees:}
+\begin{lstlisting}[language=Java]
+public class b {
+    public void a() { ... }
+    // Log lines completely DELETED from release APK
+}
+\end{lstlisting}
+\end{solutionbox}
+
+\begin{diagrambox}[\faIcon{project-diagram}~Before vs After Obfuscation]
+\begin{verbatim}
+  BEFORE (readable)                    AFTER (scrambled)
+  DroneApiService.java                 b.java
+    connectToServer()       -->          a()
+    sendDroneCommand()      -->          c()
+    getTelemetryData()      -->          d()
+    Log.d("Password:xyz")  -->          [DELETED]
+\end{verbatim}
+\end{diagrambox}
+
+\begin{notebox}[\faIcon{info-circle}~Key Fact]
+ProGuard only works on \textbf{Java/Kotlin} code. It does \textbf{NOT} protect JSON files, XML files, or assets. That is why Steps 5 and 9 exist.
+\end{notebox}
+
+\newpage
+% ══════════════════════════════════════════════════
+\section{Step 3: EncryptedSharedPreferences --- Secure Local Storage}
+% ══════════════════════════════════════════════════
+
+\begin{problembox}[\faIcon{bug}~Problem: User Data Stored as Plain Text on Phone]
+Normal \texttt{SharedPreferences} saves data as a readable XML file on the device.
+\begin{lstlisting}[language=XML]
+<!-- /data/data/com.droneapp/shared_prefs/drone_prefs.xml -->
+<string name="password">MyP@ssw0rd123!</string>
+<string name="auth_token">eyJhbGciOiJIUzI1...</string>
+\end{lstlisting}
+\danger{Risk:} Anyone with root access, backup tools, or malware can read this file.
+\end{problembox}
+
+\begin{solutionbox}[\faIcon{check-circle}~Solution: Use EncryptedSharedPreferences]
+Uses \tech{Android Keystore} (hardware chip) for encryption. Both key names and values are encrypted.
+
+\begin{lstlisting}[language=Java]
+// Add dependency: androidx.security:security-crypto:1.1.0-alpha06
+
+String masterKey = MasterKeys.getOrCreate(MasterKeys.AES256_GCM_SPEC);
+
+SharedPreferences securePrefs = EncryptedSharedPreferences.create(
+    "secure_drone_prefs",
+    masterKey,
+    context,
+    PrefKeyEncryptionScheme.AES256_SIV,    // encrypt key names
+    PrefValueEncryptionScheme.AES256_GCM   // encrypt values
+);
+
+// Usage is IDENTICAL to normal SharedPreferences:
+securePrefs.edit().putString("password", "MyP@ssw0rd123!").apply();
+\end{lstlisting}
+
+\textbf{Stored file now looks like:}
+\begin{lstlisting}[language=XML]
+<string name="Qp7rT1wYz">xK4vB8cN2jF5hR9mD3...</string>
+\end{lstlisting}
+\end{solutionbox}
+
+\begin{diagrambox}[\faIcon{project-diagram}~How Encryption Works Internally]
+\begin{verbatim}
+  Your Code                 Android Keystore (Hardware Chip)
+  "save password"  ------>  Master Key encrypts it  ------>  Encrypted XML
+  "read password"  <------  Master Key decrypts it  <------  Encrypted XML
+
+  The Master Key NEVER leaves the hardware chip.
+  Even if the phone is rooted, the key cannot be extracted.
+\end{verbatim}
+\end{diagrambox}
+
+% ══════════════════════════════════════════════════
+\section{Step 4: Server-Side Proxy --- Remove Secrets from APK Entirely}
+% ══════════════════════════════════════════════════
+
+\begin{problembox}[\faIcon{bug}~Problem: API Keys \& DB Credentials Inside the APK]
+Even with BuildConfig injection, the actual values are baked into the compiled APK. A skilled hacker can still extract them. Direct database connections from a mobile app expose the \textbf{entire database}.
+\begin{lstlisting}[language=Java]
+// DANGEROUS: App connects directly to database
+String conn = "jdbc:postgresql://db.dronecontrol.com:5432/"
+    + "?user=db_admin&password=Postgr3s@Pr0d#2026";
+\end{lstlisting}
+\end{problembox}
+
+\begin{solutionbox}[\faIcon{check-circle}~Solution: App $\rightarrow$ Your Server $\rightarrow$ Database/APIs]
+Move all sensitive credentials to your backend server. App only sends a user authentication token.
+
+\begin{lstlisting}[language=Java]
+// App code --- NO secrets, only user token
+Request request = new Request.Builder()
+    .url("https://your-server.com/api/drone/command")
+    .addHeader("Authorization", "Bearer " + userToken)
+    .post(body).build();
+
+// Server code (Node.js) --- secrets live HERE
+const DRONE_API_KEY = process.env.DRONE_API_KEY;  // environment var
+fetch('https://drone-api.com/command', {
+    headers: { 'X-API-Key': DRONE_API_KEY }
+});
+\end{lstlisting}
+\end{solutionbox}
+
+\begin{diagrambox}[\faIcon{project-diagram}~Architecture Change]
+\begin{verbatim}
+  BEFORE (dangerous):
+  App ---[API_KEY="secret"]--->  Drone API
+  Hacker decompiles --> finds "secret"
+
+  AFTER (safe):
+  App ---[user_token]---> YOUR Server ---[API_KEY]--->  Drone API
+  Hacker decompiles --> finds NO secret
+  API_KEY lives only on YOUR server (hacker can't reach it)
+\end{verbatim}
+\end{diagrambox}
+
+\begin{notebox}[\faIcon{star}~This is the MOST IMPORTANT step]
+\textbf{The most secure secret is one that never exists on the device.} All other steps are layers of defense. This step is the \textbf{only 100\% solution} for API keys and database credentials.
+\end{notebox}
+
+\newpage
+% ══════════════════════════════════════════════════
+\section{Step 5: SSL Pinning --- Secure Network Communication}
+% ══════════════════════════════════════════════════
+
+\begin{problembox}[\faIcon{bug}~Problem: Man-in-the-Middle (MITM) Attack]
+A hacker on the same WiFi can intercept communication between your app and server using a fake certificate.
+\begin{verbatim}
+App -----> Hacker (reads everything) -----> Your Server
+\end{verbatim}
+\end{problembox}
+
+\begin{solutionbox}[\faIcon{check-circle}~Solution: Network Security Config with Certificate Pinning]
+Tell your app to \textbf{only trust your specific server's certificate fingerprint}.
+
+\textbf{Create \texttt{res/xml/network\_security\_config.xml}:}
+\begin{lstlisting}[language=XML]
+<network-security-config>
+    <domain-config cleartextTrafficPermitted="false">
+        <domain includeSubdomains="true">api.dronecontrol.com</domain>
+        <pin-set expiration="2027-06-01">
+            <pin digest="SHA-256">YOUR_CERT_HASH_HERE==</pin>
+        </pin-set>
+    </domain-config>
+    <base-config cleartextTrafficPermitted="false" />
+</network-security-config>
+\end{lstlisting}
+
+\textbf{Link in AndroidManifest.xml:}
+\begin{lstlisting}[language=XML]
+<application
+    android:networkSecurityConfig="@xml/network_security_config" >
+\end{lstlisting}
+
+\textbf{Result:} Hacker's fake certificate is rejected. All HTTP traffic is blocked. Only HTTPS to your pinned server is allowed.
+\end{solutionbox}
+
+% ══════════════════════════════════════════════════
+\section{Step 6: Root \& Tamper Detection --- Runtime Checks}
+% ══════════════════════════════════════════════════
+
+\begin{problembox}[\faIcon{bug}~Problem: App Runs on Compromised Devices]
+Rooted phones bypass all OS-level security. Modified APKs can contain malicious code. For a drone control app, this is \textbf{physically dangerous}.
+\end{problembox}
+
+\begin{solutionbox}[\faIcon{check-circle}~Solution: Check Device Integrity at Startup]
+\begin{lstlisting}[language=Java]
+// Check 1: Root detection
+public static boolean isRooted() {
+    String[] paths = {"/system/xbin/su", "/system/bin/su", "/sbin/su"};
+    for (String p : paths)
+        if (new File(p).exists()) return true;
+    return false;
+}
+
+// Check 2: Emulator detection
+public static boolean isEmulator() {
+    return Build.FINGERPRINT.contains("generic")
+        || Build.MODEL.contains("Emulator");
+}
+
+// Check 3: APK signature verification
+public static boolean isTampered(Context ctx) {
+    String currentHash = getSignatureHash(ctx);
+    return !currentHash.equals("YOUR_KNOWN_HASH");
+}
+\end{lstlisting}
+
+\textbf{Usage in MainActivity:}
+\begin{lstlisting}[language=Java]
+if (isRooted() || isEmulator() || isTampered(this)) {
+    showAlert("Security Alert! App cannot run on this device.");
+    finish();  // Close app
+}
+\end{lstlisting}
+\end{solutionbox}
+
+\begin{diagrambox}[\faIcon{project-diagram}~Startup Security Flow]
+\begin{verbatim}
+  App Opens --> Rooted? --YES--> Block & Exit
+                  |NO
+                  v
+              Emulator? --YES--> Block & Exit
+                  |NO
+                  v
+              Tampered? --YES--> Block & Exit
+                  |NO
+                  v
+              Debugger? --YES--> Block & Exit
+                  |NO
+                  v
+              ALL CLEAR --> App Runs Normally
+\end{verbatim}
+\end{diagrambox}
+
+\newpage
+% ══════════════════════════════════════════════════
+\section{Step 7: Play Integrity API --- Google-Verified Checks}
+% ══════════════════════════════════════════════════
+
+\begin{problembox}[\faIcon{bug}~Problem: Local Checks Can Be Bypassed]
+Step 6 checks run on the phone --- a skilled hacker can patch the APK to skip them. We need verification from an \textbf{external authority that cannot be fooled}.
+\end{problembox}
+
+\begin{solutionbox}[\faIcon{check-circle}~Solution: Google's Play Integrity API]
+Google's servers verify the device/app and return a signed token. Verification happens on \textbf{your server via Google} --- impossible to fake.
+
+\begin{lstlisting}[language=Java]
+// dependency: com.google.android.play:integrity:1.4.0
+
+IntegrityManager manager = IntegrityManagerFactory.create(context);
+manager.requestIntegrityToken(
+    IntegrityTokenRequest.builder().setNonce(randomNonce).build()
+).addOnSuccessListener(response -> {
+    String token = response.token();
+    sendTokenToYourServer(token);  // Server verifies with Google
+});
+\end{lstlisting}
+\end{solutionbox}
+
+\begin{diagrambox}[\faIcon{project-diagram}~Play Integrity Flow]
+\begin{verbatim}
+  App --> Google: "Is this device legit?"
+  Google checks --> creates signed TOKEN
+  App sends TOKEN --> YOUR Server --> Google API: "Verify this token"
+  Google responds: Real device? YES | Genuine app? YES | Rooted? NO
+  Server tells App: "Verified. Proceed with drone arming."
+\end{verbatim}
+\end{diagrambox}
+
+\begin{notebox}[\faIcon{balance-scale}~Step 6 vs Step 7]
+\begin{tabularx}{\textwidth}{lXX}
+\toprule
+& \textbf{Step 6 (Local Checks)} & \textbf{Step 7 (Play Integrity)} \\
+\midrule
+Who checks? & Your code on the phone & Google's servers \\
+Can be bypassed? & Yes, by patching APK & No, verified externally \\
+Needs internet? & No & Yes \\
+Best for? & Quick first defense & Critical operations (arming drone) \\
+\bottomrule
+\end{tabularx}
+\end{notebox}
+
+% ══════════════════════════════════════════════════
+\section{Step 8: NDK Native Code --- Secrets in C Language}
+% ══════════════════════════════════════════════════
+
+\begin{problembox}[\faIcon{bug}~Problem: Some Secrets Must Stay on Device]
+Google Maps API key must be on the device (the SDK needs it locally). Java strings are trivially extracted from a decompiled APK.
+\end{problembox}
+
+\begin{solutionbox}[\faIcon{check-circle}~Solution: Store in C Code (Compiles to Machine Code)]
+C/C++ compiles to binary machine code (\texttt{.so} files) --- much harder to reverse-engineer.
+
+\textbf{C file (\texttt{native-keys.c}):}
+\begin{lstlisting}[language=C]
+#include <jni.h>
+JNIEXPORT jstring JNICALL
+Java_com_droneapp_security_NativeKeys_getMapsApiKey(
+    JNIEnv *env, jobject obj) {
+    return (*env)->NewStringUTF(env, "AIzaSyB-YOUR-KEY");
+}
+\end{lstlisting}
+
+\textbf{Java bridge (\texttt{NativeKeys.java}):}
+\begin{lstlisting}[language=Java]
+public class NativeKeys {
+    static { System.loadLibrary("native-keys"); }
+    public static native String getMapsApiKey(); // runs C code
+}
+\end{lstlisting}
+\end{solutionbox}
+
+\begin{diagrambox}[\faIcon{project-diagram}~Java vs C After Decompiling]
+\begin{verbatim}
+  Java decompiled (readable):
+  String KEY = "AIzaSyB-YOUR-KEY";    <-- hacker reads this easily
+
+  C decompiled (machine code):
+  0x7f3a: mov  r0, #0x41              <-- meaningless numbers
+  0x7f3e: strb r0, [sp, #0x0]         <-- takes hours to decode
+  0x7f42: mov  r0, #0x49
+\end{verbatim}
+\end{diagrambox}
+
+\newpage
+% ══════════════════════════════════════════════════
+\section{Complete Security Architecture --- Final Overview}
+% ══════════════════════════════════════════════════
+
+\begin{summarybox}[\faIcon{trophy}~All 9 Steps at a Glance]
+\begin{tabularx}{\textwidth}{clXcc}
+\toprule
+\textbf{\#} & \textbf{Method} & \textbf{What It Protects} & \textbf{Safety} & \textbf{Difficulty} \\
+\midrule
+1 & local.properties & Secrets from GitHub & \stars{1} & Easy \\
+2 & R8/ProGuard & Code readability + logs & \stars{2} & Easy \\
+3 & EncryptedSharedPrefs & User data on phone & \stars{4} & Easy \\
+4 & Server-Side Proxy & API keys, DB passwords & \stars{5} & Medium \\
+5 & SSL Pinning & Network communication & \stars{4} & Easy \\
+6 & Root/Tamper Detection & Compromised devices & \stars{3} & Medium \\
+7 & Play Integrity API & Google-verified checks & \stars{4} & Medium \\
+8 & NDK Native Code & On-device secrets & \stars{3} & Hard \\
+\bottomrule
+\end{tabularx}
+
+\vspace{8pt}
+\stars{1} = Basic ~|~ \stars{3} = Good ~|~ \stars{5} = Maximum Protection
+\end{summarybox}
+
+\begin{diagrambox}[\faIcon{project-diagram}~Complete Security Architecture]
+\begin{verbatim}
+  BUILD TIME                    DEPLOYMENT                 RUNTIME
+  ==========                    ==========                 =======
+  local.properties              Play App Signing           Android Keystore
+  BuildConfig injection         AAB format                 EncryptedSharedPrefs
+  R8/ProGuard obfuscation       Play Integrity API         SSL Pinning
+  NDK native secrets            Tamper detection            Server-side proxy
+  .gitignore hygiene            Root/emulator checks        Token-based auth
+
+  +-----------+    +----------+    +---------+    +---------+
+  | Developer | -> | Build +  | -> | Google  | -> | User's  |
+  | writes    |    | Obfuscate|    | Play    |    | Phone   |
+  | code      |    | + Sign   |    | Store   |    | (safe!) |
+  +-----------+    +----------+    +---------+    +---------+
+\end{verbatim}
+\end{diagrambox}
+
+\begin{summarybox}[\faIcon{bullseye}~Golden Rules]
+\begin{enumerate}[leftmargin=*]
+\item \textbf{The best secret is one that never exists on the device} --- use server-side proxy.
+\item \textbf{No single method is 100\% safe} --- use multiple layers together.
+\item \textbf{ProGuard protects Java only} --- JSON, XML, and assets need separate handling.
+\item \textbf{Local checks can be bypassed} --- always verify critical actions via your server.
+\item \textbf{Never log secrets} --- use ProGuard to strip all \texttt{Log.d()} in release builds.
+\end{enumerate}
+\end{summarybox}
+
+\end{document}
