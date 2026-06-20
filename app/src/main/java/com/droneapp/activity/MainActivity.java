@@ -22,6 +22,17 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         // setContentView(R.layout.activity_main);
 
+
+         if (!isDeviceTrusted()) {
+            return;  // App closes — won't run on compromised devices
+        }
+
+
+
+
+
+
+
         apiService = new DroneApiService();
         userPrefs = new UserPreferences(this);
 
@@ -41,6 +52,45 @@ public class MainActivity extends AppCompatActivity {
         // userPrefs.saveUserCredentials("pilot_gaurav", "MyP@ssw0rd123!");
         // userPrefs.saveDroneConnectionInfo("DRONE-X500-001", "conn-key-abc123");
 
+    }
+
+
+    private boolean isDeviceTrusted() {
+        // Check 1: Rooted device
+        if (IntegrityChecker.isDeviceRooted()) {
+            showBlockedDialog("Rooted device detected. "
+                + "For safety, this app cannot control drones on rooted devices.");
+            return false;
+        }
+        // Check 2: Emulator
+        if (IntegrityChecker.isEmulator()) {
+            showBlockedDialog("Emulator detected. "
+                + "Drone control requires a real device.");
+            return false;
+        }
+        // Check 3: Modified APK
+        if (IntegrityChecker.isAppTampered(this)) {
+            showBlockedDialog("This app has been modified. "
+                + "Please download the official version from Play Store.");
+            return false;
+        }
+        // Check 4: Debugger
+        if (IntegrityChecker.isDebuggerAttached()) {
+            showBlockedDialog("Debugger detected. "
+                + "Cannot run drone control with a debugger attached.");
+            return false;
+        }
+        return true;  // All checks passed!
+    }
+
+
+      private void showBlockedDialog(String message) {
+        new AlertDialog.Builder(this)
+            .setTitle("⚠️ Security Alert")
+            .setMessage(message)
+            .setCancelable(false)
+            .setPositiveButton("Exit", (dialog, which) -> finish())
+            .show();
     }
 
     /**
