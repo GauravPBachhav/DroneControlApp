@@ -26,16 +26,21 @@ public class MainActivity extends AppCompatActivity {
         userPrefs = new UserPreferences(this);
 
         // ❌ DANGER: Logging API key at startup!
-        Log.d(TAG, "App started with API Key: " + AppConfig.DRONE_API_KEY);
-        Log.d(TAG, "Firebase Project: " + AppConfig.FIREBASE_PROJECT_ID);
-
+        // Log.d(TAG, "App started with API Key: " + AppConfig.DRONE_API_KEY);
+        // Log.d(TAG, "Firebase Project: " + AppConfig.FIREBASE_PROJECT_ID);
+   String userToken = userPrefs.getAuthToken();
         // Connect to server using hardcoded credentials
-        apiService.connectToServer();
+        apiService.connectToServer(userToken);
+
+
+
+     
 
         // Save user data in plain text
-        userPrefs.saveAuthToken("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.fake.token");
-        userPrefs.saveUserCredentials("pilot_gaurav", "MyP@ssw0rd123!");
-        userPrefs.saveDroneConnectionInfo("DRONE-X500-001", "conn-key-abc123");
+        // userPrefs.saveAuthToken("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.fake.token");
+        // userPrefs.saveUserCredentials("pilot_gaurav", "MyP@ssw0rd123!");
+        // userPrefs.saveDroneConnectionInfo("DRONE-X500-001", "conn-key-abc123");
+
     }
 
     /**
@@ -44,13 +49,13 @@ public class MainActivity extends AppCompatActivity {
     private void armAndFlyDrone() {
         // ❌ No integrity check — works on rooted/emulator devices
         // ❌ No biometric auth for critical commands
-        apiService.sendDroneCommand("ARM", 28.6139, 77.2090, 100.0);
-        apiService.sendDroneCommand("TAKEOFF", 28.6139, 77.2090, 100.0);
-        apiService.sendDroneCommand("GOTO", 28.6200, 77.2150, 150.0);
+         String userToken = userPrefs.getAuthToken();
+        apiService.sendDroneCommand(userToken, "ARM", 28.6139, 77.2090, 100.0);
     }
 
     private void processPremiumPurchase() {
         // ❌ Payment processing with hardcoded keys
-        apiService.processPayment(999.00);
+       String userToken = userPrefs.getAuthToken();
+        apiService.processPayment(userToken, 999.00);
     }
 }
