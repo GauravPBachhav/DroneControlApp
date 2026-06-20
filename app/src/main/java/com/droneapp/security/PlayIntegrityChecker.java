@@ -59,12 +59,4 @@ public class PlayIntegrityChecker {
             callback.onCheckFailed(e.getMessage());
         });
     }
-
-    /**
-     * Callback interface — your activity implements this
-     */
-    public interface IntegrityCallback {
-        void onTokenReceived(String token, String nonce);  // Send to your server
-        void onCheckFailed(String error);                   // Handle failure
-    }
-}
+ 
