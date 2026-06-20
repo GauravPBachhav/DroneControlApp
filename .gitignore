@@ -10,9 +10,9 @@
 .externalNativeBuild
 .cxx
 
-# ❌ MISSING: Not ignoring sensitive files!
-# Should ignore:  google-services.json
-# Should ignore:  *.jks (keystore files)
-# Should ignore:  *.keystore
-# Should ignore:  keystore.properties
-# Should ignore:  signing configs
+# Sensitive files — NEVER push these
+google-services.json
+*.jks
+*.keystore
+keystore.properties
+signing-config.properties

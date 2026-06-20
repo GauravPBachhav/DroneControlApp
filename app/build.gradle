@@ -2,6 +2,13 @@ plugins {
     id 'com.android.application'
 }
 
+// Read secrets from local.properties
+def localProps = new Properties()
+def localPropsFile = rootProject.file("local.properties")
+if (localPropsFile.exists()) {
+    localProps.load(new FileInputStream(localPropsFile))
+}
+
 android {
     namespace 'com.droneapp'
     compileSdk 34
@@ -12,11 +19,24 @@ android {
         targetSdk 34
         versionCode 1
         versionName "1.0"
+
+        // Inject secrets as BuildConfig fields (accessible in Java code)
+        buildConfigField "String", "DRONE_API_KEY", "\"${localProps['DRONE_API_KEY']}\""
+        buildConfigField "String", "GOOGLE_MAPS_API_KEY", "\"${localProps['GOOGLE_MAPS_API_KEY']}\""
+        buildConfigField "String", "SERVER_URL", "\"${localProps['SERVER_URL']}\""
+        buildConfigField "String", "SERVER_USERNAME", "\"${localProps['SERVER_USERNAME']}\""
+        buildConfigField "String", "SERVER_PASSWORD", "\"${localProps['SERVER_PASSWORD']}\""
+        buildConfigField "String", "FIREBASE_API_KEY", "\"${localProps['FIREBASE_API_KEY']}\""
+        buildConfigField "String", "ENCRYPTION_SECRET", "\"${localProps['ENCRYPTION_SECRET']}\""
+        buildConfigField "String", "RAZORPAY_KEY_ID", "\"${localProps['RAZORPAY_KEY_ID']}\""
+        buildConfigField "String", "RAZORPAY_KEY_SECRET", "\"${localProps['RAZORPAY_KEY_SECRET']}\""
+
+        // Inject Maps key into AndroidManifest.xml
+        manifestPlaceholders = [mapsApiKey: localProps['GOOGLE_MAPS_API_KEY'] ?: ""]
     }
 
     buildTypes {
         release {
-            // ❌ PROBLEM: Obfuscation is DISABLED!
             minifyEnabled false
             shrinkResources false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
