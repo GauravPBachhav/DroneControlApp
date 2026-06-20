@@ -11,11 +11,47 @@ public class UserPreferences {
 
     private SharedPreferences prefs;
 
-    public UserPreferences(Context context) {
-        // ❌ DANGER: Plain SharedPreferences — stored as readable XML file!
-        // File location: /data/data/com.droneapp/shared_prefs/drone_prefs.xml
-        prefs = context.getSharedPreferences("drone_prefs", Context.MODE_PRIVATE);
+    // public UserPreferences(Context context) {
+    //     // ❌ DANGER: Plain SharedPreferences — stored as readable XML file!
+    //     // File location: /data/data/com.droneapp/shared_prefs/drone_prefs.xml
+    //     prefs = context.getSharedPreferences("drone_prefs", Context.MODE_PRIVATE);
+    // }
+
+
+
+
+ public UserPreferences(Context context) {
+        try {
+            // Create or get the master key from Android Keystore (hardware chip)
+            String masterKeyAlias = MasterKeys.getOrCreate(MasterKeys.AES256_GCM_SPEC);
+            // Create encrypted preferences (same API as normal SharedPreferences!)
+            prefs = EncryptedSharedPreferences.create(
+                "secure_drone_prefs",                                           // file name
+                masterKeyAlias,                                                  // master key
+                context,
+                EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,   // encrypt key names
+                EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM  // encrypt values
+            );
+        } catch (Exception e) {
+            // Fallback — should never happen on API 24+
+            prefs = context.getSharedPreferences("drone_prefs", Context.MODE_PRIVATE);
+        }
     }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
     /**
      * Save user login token
@@ -25,6 +61,15 @@ public class UserPreferences {
         // This saves as plain text in XML:
         // <string name="auth_token">eyJhbGciOiJIUzI1NiIs...</string>
         prefs.edit().putString("auth_token", token).apply();
+
+
+
+        // atfer adding dependecies and EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM  // encrypt values
+
+           // Saved as: <string name="Xk2mN...">Bf3kL9x2mN...</string>
+        // NOT as:   <string name="auth_token">eyJhbGci...</string>
+
+
     }
 
     public String getAuthToken() {
@@ -40,6 +85,8 @@ public class UserPreferences {
                 .putString("username", username)
                 .putString("password", password)    // ❌ NEVER store passwords in plain text!
                 .apply();
+
+                //now encrypted 
     }
 
     /**
@@ -52,23 +99,4 @@ public class UserPreferences {
                 .putString("drone_connection_key", connectionKey)  // ❌ Plain text!
                 .apply();
     }
-
-    public String getDroneConnectionKey() {
-        return prefs.getString("drone_connection_key", null);
-    }
-
-    /**
-     * ❌ What the saved XML file looks like on the device:
-     *
-     * <?xml version='1.0' encoding='utf-8'?>
-     * <map>
-     *     <string name="auth_token">eyJhbGciOiJIUzI1NiIs...</string>
-     *     <string name="username">pilot_gaurav</string>
-     *     <string name="password">MyP@ssw0rd123!</string>
-     *     <string name="drone_id">DRONE-X500-001</string>
-     *     <string name="drone_connection_key">conn-key-abc123</string>
-     * </map>
-     *
-     * Anyone with root access or a backup tool can read this file!
-     */
-}
+ 
